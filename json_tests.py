@@ -24,8 +24,8 @@ def build_file_hdr(mapping):
 
 
 data_row = []
-filename = 'BasicCompanyData-test.csv'
-# filename = 'psc-snapshot-test.csv'
+# filename = 'BasicCompanyData-test.csv'
+filename = 'psc-snapshot-test.csv'
 
 # Load the data file definitions
 with open('filedefs.json') as json_data:
@@ -69,7 +69,7 @@ if filename.startswith("BasicCompanyData"):
 elif filename.startswith("psc-snapshot"):
     """
     To create the relationships there needs to be a node for each person entity created via node file and then
-    the vertex file
+    the vertex file to map the person to the company
     """
     file_type = "psc-snapshot"
     file_format = definition[file_type]["type"]
@@ -88,21 +88,26 @@ elif filename.startswith("psc-snapshot"):
         outputfile.write(hdr + "\n")
 
         with open(filename, mode="r") as datafile:
-            first_line = datafile.readline()
-            data = json.loads(first_line)
-            # Read the data from the file row
-            for field in mapping:
-                element = mapping[field]
-                if element.isupper() and element.startswith("#"):
-                    data_row.append('"%s"' % element.lstrip("#"))
-                elif element.startswith("\\"):
-                    # print data[element.lstrip("\\")]
-                    data_row.append('"%s"' % data[element.lstrip("\\")])
-                else:
-                    # print data[root][mapping[field]]
-                    data_row.append('"%s"' % data[root][mapping[field]])
-
-            outputfile.write(neptune.SEPARATOR.join(data_row) + "\n")
+            # first_line = datafile.readline()
+            for line in datafile:
+                del data_row[:]
+                data = json.loads(line)
+                # Read the data from the file row
+                for field in mapping:
+                    element = mapping[field]
+                    print element
+                    if element.isupper() and element.startswith("#"):
+                        data_row.append('"%s"' % element.lstrip("#"))
+                    elif element.startswith("\\"):
+                        # print data[element.lstrip("\\")]
+                        data_row.append('"%s"' % data[element.lstrip("\\")])
+                    else:
+                        # print data[root][mapping[field]]
+                        try:
+                            data_row.append('"%s"' % data[root][mapping[field]])
+                        except KeyError:
+                            data_row.append('""')
+                outputfile.write(neptune.SEPARATOR.join(data_row) + "\n")
 
     # Process the edges
     mapping = definition[file_type]["edge"]["mapping"]
@@ -114,34 +119,31 @@ elif filename.startswith("psc-snapshot"):
 
         with open(filename, mode="r") as datafile:
             # first_line = datafile.readline()
-            for line in islice(datafile, 2, 3):
-                print line
-                first_line = line
-            data = json.loads(first_line)
+            # for line in islice(datafile, 2, 3):
+            #     first_line = line
+            for line in datafile:
+                del data_row[:]
+                data = json.loads(line)
 
-            # Read the data from the file row
-            print "EDGE MAPPING LOOP:"
-            print data
-            for field in mapping:
-                pass
-                element = mapping[field]
-                print element
-                if element == '$UUID$':
-                    print str(uuid.uuid4())
-                    data_row.append('"%s"' % str(uuid.uuid4()))
-                elif element.isupper():
+                # Read the data from the file row
+                for field in mapping:
+                    pass
+                    element = mapping[field]
                     print element
-                    data_row.append('"%s"' % element)
-                elif element.startswith("\\"):
-                    print ('"%s"' % data[element.lstrip("\\")])
-                    data_row.append('"%s"' % data[element.lstrip("\\")])
-                elif field.endswith("[]"):
-                    # Array type that must be converted to a MULTISET of strings
-                    print '"%s"' % ';'.join([(str(x)) for x in data[root][element]])
-                    data_row.append('"%s"' % ';'.join([(str(x)) for x in data[root][element]]))
-                else:
-                    print str(data[root][element])
-                    data_row.append('"%s"' % data[root][element])
+                    if element == '$UUID$':
+                        data_row.append('"%s"' % str(uuid.uuid4()))
+                    elif element.isupper():
+                        # print element
+                        data_row.append('"%s"' % element)
+                    elif element.startswith("\\"):
+                        # print ('"%s"' % data[element.lstrip("\\")])
+                        data_row.append('"%s"' % data[element.lstrip("\\")])
+                    elif field.endswith("[]"):
+                        # Array type that must be converted to a MULTISET of strings
+                        # print '"%s"' % ';'.join([(str(x)) for x in data[root][element]])
+                        data_row.append('"%s"' % ';'.join([(str(x)) for x in data[root][element]]))
+                    else:
+                        # print str(data[root][element])
+                        data_row.append('"%s"' % data[root][element])
 
-            outputfile.write(neptune.SEPARATOR.join(data_row) + "\n")
-
+                outputfile.write(neptune.SEPARATOR.join(data_row) + "\n")

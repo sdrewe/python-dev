@@ -2,9 +2,52 @@
 import json
 import uuid
 import re
-from itertools import islice
+import requests
+import boto3
+# from itertools import islice
 
 import neptune
+
+
+def upload_file(file_):
+    session = boto3.Session(
+        aws_access_key_id='YOUR_AWS_ACCESS_KEY_ID',
+        aws_secret_access_key='YOUR_AWS_SECRET_ACCESS_KEY_ID',
+        region_name='YOUR_AWS_ACCOUNT_REGION'
+    )
+    s3 = session.resource('s3')
+    bucket = s3.Bucket(neptune.BUCKET_NAME)
+
+    with open(file_, 'rb') as data:
+        bucket.put(Key=file_, Body=data)
+
+
+def post2neptune(file_):
+    pass
+    jdata = {"source": "s3://bucket-name/%s" % file_,
+             "format": "format",
+             "iamRoleArn": "arn:aws:iam::{0}:role/{1}".format(neptune.ACID, neptune.IAM_ROLE),
+             "region": neptune.REGION,
+             "failOnError": "FALSE"}
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    rs = requests.session()
+    rs.headers = headers
+    try:
+        pass
+        rs = requests.post(neptune.ENDPOINT + " -d ", headers=headers, data=json.dumps(jdata, ensure_ascii=False))
+        # Get the status of the request and if ok then get the status of the load
+        print rs.status_code
+        print rs.content
+        loadid = json.loads(rs.content)["payload"]["loadId"]
+        print loadid
+        if rs.status_code == 200:
+            rs = requests.get(neptune.ENDPOINT + "/" + loadid)
+            print "loadid GET: ", rs.status_code
+            print "load status: ", json.loads(rs.content)["payload"]["overallStatus"]["status"]
+    except Exception:
+        raise
+    finally:
+        rs.close()
 
 
 def build_file_hdr(mapping):
@@ -13,7 +56,7 @@ def build_file_hdr(mapping):
     for field in mapping:
         # print field, mapping[field]
         try:
-            col = neptune.neptune[field]
+            col = neptune.NEPTUNE[field]
             print col
             data_row.append(col)
         except KeyError:
@@ -21,6 +64,28 @@ def build_file_hdr(mapping):
             pass
     print "HEADER: %s" % neptune.SEPARATOR.join(data_row)
     return neptune.SEPARATOR.join(data_row)
+
+
+def extract_from_json(mapping, data):
+    # Read the data from the file row
+    for field in mapping:
+        element = mapping[field]
+        print element
+        if element == '$UUID$':
+            data_row.append('"%s"' % str(uuid.uuid4()))
+        elif element.isupper() and element.startswith("#"):
+            data_row.append('"%s"' % element.lstrip("#"))
+        elif element.startswith("\\"):
+            # print ('"%s"' % data[element.lstrip("\\")])
+            data_row.append('"%s"' % data[element.lstrip("\\")])
+        elif field.endswith("[]"):
+            # Array type that must be converted to a MULTISET of strings
+            # print '"%s"' % ';'.join([(str(x)) for x in data[root][element]])
+            data_row.append('"%s"' % ';'.join([(str(x)) for x in data[root][element]]))
+        else:
+            # print str(data[root][element])
+            data_row.append('"%s"' % data[root][element])
+    return data_row
 
 
 data_row = []
@@ -58,7 +123,7 @@ if filename.startswith("BasicCompanyData"):
                     # print field, mapping[field]
                     # print file_header.index(str(mapping[field]))
                     element = mapping[field]
-                    print element
+                    # print element
                     if element.isupper() and element.startswith("#"):
                         data_row.append('"%s"' % element.lstrip("#"))
                     else:
@@ -95,7 +160,7 @@ elif filename.startswith("psc-snapshot"):
                 # Read the data from the file row
                 for field in mapping:
                     element = mapping[field]
-                    print element
+                    # print element
                     if element.isupper() and element.startswith("#"):
                         data_row.append('"%s"' % element.lstrip("#"))
                     elif element.startswith("\\"):
@@ -104,7 +169,7 @@ elif filename.startswith("psc-snapshot"):
                     else:
                         # print data[root][mapping[field]]
                         try:
-                            data_row.append('"%s"' % data[root][mapping[field]])
+                            data_row.append('"%s"' % data[root][element])
                         except KeyError:
                             data_row.append('""')
                 outputfile.write(neptune.SEPARATOR.join(data_row) + "\n")
@@ -116,6 +181,7 @@ elif filename.startswith("psc-snapshot"):
     with open("peco_edge.csv", 'w') as outputfile:
         outputfile.write(hdr + "\n")
         data_row = []
+        output_row = []
 
         with open(filename, mode="r") as datafile:
             # first_line = datafile.readline()
@@ -123,27 +189,33 @@ elif filename.startswith("psc-snapshot"):
             #     first_line = line
             for line in datafile:
                 del data_row[:]
+                del output_row[:]
                 data = json.loads(line)
+                data_row = extract_from_json(mapping, data)
+                # print data_row
 
                 # Read the data from the file row
                 for field in mapping:
-                    pass
                     element = mapping[field]
-                    print element
+                    # print element
                     if element == '$UUID$':
-                        data_row.append('"%s"' % str(uuid.uuid4()))
-                    elif element.isupper():
-                        # print element
-                        data_row.append('"%s"' % element)
+                        output_row.append('"%s"' % str(uuid.uuid4()))
+                    elif element.isupper() and element.startswith("#"):
+                        output_row.append('"%s"' % element.lstrip("#"))
                     elif element.startswith("\\"):
                         # print ('"%s"' % data[element.lstrip("\\")])
-                        data_row.append('"%s"' % data[element.lstrip("\\")])
+                        output_row.append('"%s"' % data[element.lstrip("\\")])
                     elif field.endswith("[]"):
                         # Array type that must be converted to a MULTISET of strings
                         # print '"%s"' % ';'.join([(str(x)) for x in data[root][element]])
-                        data_row.append('"%s"' % ';'.join([(str(x)) for x in data[root][element]]))
+                        output_row.append('"%s"' % ';'.join([(str(x)) for x in data[root][element]]))
                     else:
                         # print str(data[root][element])
-                        data_row.append('"%s"' % data[root][element])
+                        output_row.append('"%s"' % data[root][element])
 
-                outputfile.write(neptune.SEPARATOR.join(data_row) + "\n")
+                outputfile.write(neptune.SEPARATOR.join(output_row) + "\n")
+
+    # Send the generated file to s3 bucket
+    # upload_file(path=filename)
+    # Load the file contents into Neptune
+    # post2neptune(filename)

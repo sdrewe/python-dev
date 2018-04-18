@@ -4,6 +4,9 @@ import uuid
 import re
 import requests
 import boto3
+import botocore
+import base64
+import logging
 # from itertools import islice
 
 import neptune
@@ -11,19 +14,28 @@ import neptune
 
 def upload_file(file_):
     session = boto3.Session(
-        aws_access_key_id='YOUR_AWS_ACCESS_KEY_ID',
-        aws_secret_access_key='YOUR_AWS_SECRET_ACCESS_KEY_ID',
-        region_name='YOUR_AWS_ACCOUNT_REGION'
+        aws_access_key_id=base64.b64decode(neptune.ACCESS_KEY_ID),
+        aws_secret_access_key=base64.b64decode(neptune.ACCESS_SECRET_KEY),
+        region_name=neptune.S3REGION
     )
     s3 = session.resource('s3')
     bucket = s3.Bucket(neptune.BUCKET_NAME)
-
-    with open(file_, 'rb') as data:
-        bucket.put(Key=file_, Body=data)
+    try:
+        s3.meta.client.head_bucket(Bucket=neptune.BUCKET_NAME)
+    except botocore.exceptions.ClientError as e:
+        # If a client error is thrown, then check that it was a 404 error.
+        # If it was a 404 error, then the bucket does not exist.
+        error_code = int(e.response['Error']['Code'])
+        if error_code == 404:
+            logger.error("Bucket %s not found." % neptune.BUCKET_NAME)
+        elif error_code == 403:
+            logger.error("Bucket name invalid: %s" % neptune.BUCKET_NAME)
+    bucket.upload_file(file_, file_)
+    logger.info("Uploaded file: %s to bucket: %s" % (file_, neptune.BUCKET_NAME))
 
 
 def post2neptune(file_):
-    pass
+    # pass
     jdata = {"source": "s3://bucket-name/%s" % file_,
              "format": "format",
              "iamRoleArn": "arn:aws:iam::{0}:role/{1}".format(neptune.ACID, neptune.IAM_ROLE),
@@ -33,7 +45,7 @@ def post2neptune(file_):
     rs = requests.session()
     rs.headers = headers
     try:
-        pass
+        # pass
         rs = requests.post(neptune.ENDPOINT + " -d ", headers=headers, data=json.dumps(jdata, ensure_ascii=False))
         # Get the status of the request and if ok then get the status of the load
         print rs.status_code
@@ -52,12 +64,10 @@ def post2neptune(file_):
 
 def build_file_hdr(mapping):
     data_row = []
-    # print "BUILDING HEADER:"
     for field in mapping:
         # print field, mapping[field]
         try:
             col = neptune.NEPTUNE[field]
-            print col
             data_row.append(col)
         except KeyError:
             data_row.append(field)
@@ -88,10 +98,19 @@ def extract_from_json(mapping, data):
     return data_row
 
 
-data_row = []
-# filename = 'BasicCompanyData-test.csv'
-filename = 'psc-snapshot-test.csv'
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+# create stream handler to log to the console
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
+handler.setFormatter(formatter)
+# add the handler to the logger
+logger.addHandler(handler)
 
+data_row = []
+filename = 'BasicCompanyData-test.csv'
+# filename = 'psc-snapshot-test.csv'
+logger.info("Processing: %s", filename)
 # Load the data file definitions
 with open('filedefs.json') as json_data:
     definition = json.load(json_data)
@@ -109,6 +128,8 @@ if filename.startswith("BasicCompanyData"):
         outputfile.write(hdr + "\n")
 
         with open(filename, mode="r") as datafile:
+            # Skip Header
+            next(datafile)
             # for line in islice(datafile, 12, 13):
             for line in datafile:
                 # print line
@@ -118,7 +139,7 @@ if filename.startswith("BasicCompanyData"):
                                                                                    definition[file_type]["enclosure"])
                 data_list = re.split(pattern, line.rstrip())
                 data_list = [x.strip(' ') for x in data_list]
-                print data_list
+                # print data_list
                 for field in mapping:
                     # print field, mapping[field]
                     # print file_header.index(str(mapping[field]))
@@ -154,6 +175,8 @@ elif filename.startswith("psc-snapshot"):
 
         with open(filename, mode="r") as datafile:
             # first_line = datafile.readline()
+            # Skip Header
+            next(datafile)
             for line in datafile:
                 del data_row[:]
                 data = json.loads(line)
@@ -215,7 +238,7 @@ elif filename.startswith("psc-snapshot"):
 
                 outputfile.write(neptune.SEPARATOR.join(output_row) + "\n")
 
-    # Send the generated file to s3 bucket
-    # upload_file(path=filename)
-    # Load the file contents into Neptune
-    # post2neptune(filename)
+        # Send the generated file to s3 bucket
+        upload_file(file_="peco_edge.csv")
+        # Load the file contents into Neptune
+        # post2neptune(filename)

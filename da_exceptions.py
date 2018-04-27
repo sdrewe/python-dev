@@ -159,9 +159,9 @@ if __name__ == "__main__":
             # Convert the rows to a pandas dataframe
             df = pd.DataFrame(qry.fetchall())
             if df.empty:
-                df = pd.DataFrame(columns=[d[0] for d in qry.description])
+                df = pd.DataFrame(columns=[d for d in report.properties["HEADER"]])
             else:
-                df.columns = [d[0] for d in qry.description]
+                df.columns = [d for d in report.properties["HEADER"]]
             print df
 
         finally:
@@ -170,12 +170,13 @@ if __name__ == "__main__":
         # If any data is found then write the dataframe to an excel spreadsheet
         # and then send the spreadsheet
         logger.info("Creating spreadsheet...")
-        worksheets = {"sheet1": report.properties["STRUCTURE_DATA_TYPE"]}
-        # to_excel.build_xls(report.filename, worksheets, sheet1=df1)
-
-        # If no data is found then send email to notify there is nothing to report
-        logger.info("No exception data returned.")
-        sendMail(localEnv.recipient, str(localEnv.tnsname) + " " + args.strtype + " No Exceptions",
-                 "".join("No field exception data to report since the last run."))
+        if not df.empty:
+            worksheets = {"sheet1": report.properties["STRUCTURE_DATA_TYPE"]}
+            to_excel.build_xls(report.filename, worksheets, sheet1=df)
+        else:
+            # If no data is found then send email to notify there is nothing to report
+            logger.info("No exception data returned.")
+            sendMail(localEnv.recipient, str(localEnv.tnsname) + " " + args.strtype + " No Exceptions",
+                     "".join("No field exception data to report since the last run."))
     finally:
         db_connection.conn.close()

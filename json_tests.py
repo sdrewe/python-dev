@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# Standard Modules
 import json
 import uuid
 import re
@@ -9,6 +10,7 @@ import base64
 import logging
 # from itertools import islice
 
+# Local Modules
 import neptune
 
 
@@ -22,6 +24,8 @@ def upload_file(file_):
     bucket = s3.Bucket(neptune.BUCKET_NAME)
     try:
         s3.meta.client.head_bucket(Bucket=neptune.BUCKET_NAME)
+        bucket.upload_file(file_, file_)
+        logger.info("Uploaded file: %s to bucket: %s" % (file_, neptune.BUCKET_NAME))
     except botocore.exceptions.ClientError as e:
         # If a client error is thrown, then check that it was a 404 error.
         # If it was a 404 error, then the bucket does not exist.
@@ -30,8 +34,6 @@ def upload_file(file_):
             logger.error("Bucket %s not found." % neptune.BUCKET_NAME)
         elif error_code == 403:
             logger.error("Bucket name invalid: %s" % neptune.BUCKET_NAME)
-    bucket.upload_file(file_, file_)
-    logger.info("Uploaded file: %s to bucket: %s" % (file_, neptune.BUCKET_NAME))
 
 
 def post2neptune(file_):
@@ -71,7 +73,6 @@ def build_file_hdr(mapping):
             data_row.append(col)
         except KeyError:
             data_row.append(field)
-            pass
     print "HEADER: %s" % neptune.SEPARATOR.join(data_row)
     return neptune.SEPARATOR.join(data_row)
 
@@ -102,7 +103,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 # create stream handler to log to the console
 handler = logging.StreamHandler()
-formatter = logging.Formatter("%(asctime)s %(name)-12s %(levelname)-8s %(message)s")
+formatter = logging.Formatter("%(asctime)s %(name)-6s %(levelname)-6s %(message)s")
 handler.setFormatter(formatter)
 # add the handler to the logger
 logger.addHandler(handler)

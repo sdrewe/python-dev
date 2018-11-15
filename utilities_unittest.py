@@ -5,28 +5,69 @@ import datetime
 import utilities
 
 
-class TestUtilityFunctions(unittest.TestCase):
+class TestDatetimeFunctions(unittest.TestCase):
 
     def setUp(self):
         pass
 
     # Returns TRUE if the date returned is formatted to the expected string
     def test_format_datetime1(self):
+        self.assertEqual(utilities.format_datetime(datetime.datetime.now(), 'yyyy-mm-dd'), datetime.date.today().strftime('%Y-%m-%d'))
 
-        print('Testing date format YYYY-MM-DD')
-        # self.assertEqual(1, 2, '1 not = to 1')
-        self.assertEqual(utilities.format_datetime(datetime.datetime.now(), 'yyyy-mm-dd'), '2018-11-09')
 
     # Returns TRUE if the date returned is formatted to the expected string
     def test_format_datetime2(self):
-        print('Testing data format yyyy-mm-dd hh:mi:ss')
-        # self.assertEqual(1, 2, '1 not = to 1')
-        self.assertEqual(utilities.format_datetime(datetime.datetime.now(), 'yyyy-mm-dd hh:mi:ss'), '2018-11-09')
+        self.assertEqual(utilities.format_datetime(datetime.datetime.now(), 'yyyy-mm-dd hh:mi:ss'), datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+
 
     # Returns TRUE if the date returned is formatted to the expected string
     def test_format_datetime3(self):
-        print('Testing data format yyyy-mm-dd hh:mi:ss')
         self.assertIsNone(utilities.format_datetime(None, 'yyyy-mm-dd'))
+
+
+class TestDetectByBom(unittest.TestCase):
+
+    def setUp(self):
+        # Create UTF8, UTF16LE and ascii encoded files for testing
+        import codecs
+
+        file = codecs.open("testfile_u8s.txt", mode="w", encoding="utf-8-sig")
+        file.write('Test File Text.')
+        file.close()
+        file16 = codecs.open("testfile_u16le.txt", mode="w", encoding="utf-16")
+        file16.write('Test File Text.')
+        file16.close()
+        s = '12345'
+        asctext = s.encode('ascii')
+        with open('testfile_ascii.txt', 'wb') as f:
+            f.write(asctext)
+
+
+    def test_detect8(self):
+        self.assertEqual(utilities.detect_by_bom('testfile_u8s.txt', None), 'utf-8-sig')
+
+
+    def test_detect16(self):
+        self.assertEqual(utilities.detect_by_bom('testfile_u16le.txt', None), 'utf-16')
+
+
+    def test_detectascii(self):
+        self.assertEqual(utilities.detect_by_bom('testfile_ascii.txt', None), 'utf-8')
+
+
+    def tearDown(self):
+        # Delete test files created in setUp
+        import os
+        os.remove('testfile_u8s.txt')
+        os.remove('testfile_u16le.txt')
+        os.remove('testfile_ascii.txt')
+
+
+class TestFetchArraySize(unittest.TestCase):
+
+    # Returns TRUE if the date returned is formatted to the expected string
+    def test_fetcharraysize(self):
+        self.assertIsInstance(utilities.fetcharraysize(), int)
 
 
 if __name__ == '__main__':

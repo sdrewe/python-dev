@@ -1,0 +1,106 @@
+# Python Stuff
+
+
+try:
+    from setoverrides import *
+except ImportError as e:
+    pass
+
+
+
+xls xlsx to csv:
+
+https://pypi.python.org/pypi/xlrd/0.9.2
+
+ import xlrd
+ import csv
+
+ def csv_from_excel():
+
+    wb = xlrd.open_workbook('your_workbook.xls')
+    sh = wb.sheet_by_name('Sheet1')
+    your_csv_file = open('your_csv_file.csv', 'wb')
+    wr = csv.writer(your_csv_file, quoting=csv.QUOTE_ALL)
+
+    for rownum in xrange(sh.nrows):
+        wr.writerow(sh.row_values(rownum))
+
+    your_csv_file.close()
+    
+    
+# TEst if string ends with any of the tst endings:    
+if any([needle.endswith(e) for e in ('ly', 'ed', 'ing', 'ers')]):
+    print('Is valid')
+else:
+    print('Invalid')
+    
+   
+# Regex to split a string based on a delimiter
+',(?=(?:[^"]*"[^"]*")*[^"]*$)'
+e.g. 
+pattern = ',(?=(?:[^"]*"[^"]*")*[^"]*$)'
+record = '"GLE Test AVID1","GLE0003","Dissolved","Previous Name1 AVID1 | Previous Name2 AVID1 | Previous Name3 AVID1","American Samoa","American Samoa","Trades as Name1 AVID1 | Trades as Name2 AVID1 | Trades as Name3 AVID1","www.AVID1.com","Test Spare0 AVID1","Test Spare3 AVID1","N","Test Spare13 AVID1","Test Spare1 AVID1","Test Spare6 AVID1","Test Spare7 AVID1","Test Spare10 AVID1","Test Spare14 AVID1","Test GLE0003","12","N",,,"Test Spare15 AVID1","Test Spare16 AVID1","Test Spare17 AVID1","Test Spare18 AVID1","Test Spare19 AVID1","Test Spare20 AVID1","N","Y","OP PO Box AVID1","OP Floor AVID1","OP Building AVID1","OP Street1 AVID1","OP Street2 AVID1","OP City AVID1","OP Street3 AVID1","OP State AVID1","10101","REG PO Box AVID1","REG Floor AVID1","REG Building AVID1","REG Street1 AVID1","REG Street2 AVID1","REG Street3 AVID1","REG City AVID1","REG State AVID1","10101","OP Reg No AVID1","Inc Reg No AVID1","Regulatory ID AVID1","Subsidiary","CORP","USA - United States Department of Labor","2001-09-10","2002-10-10","Registered Agent Name AVID1 ","55-1254785","New York Stock Exchange","TickerCodeAVID1","Pension funding","J.66.02","Pension funding","525110","0000009999","Regulated","6371","Pension, Health, and Welfare Funds","ABCDEF29907","2","GLE Test AVID1 - IP","GLE Test AVID1 - UP","549300R1C17QU3CUSK09","Test Spare2 AVID1","Test Spare4 AVID1","Test Spare5 AVID1","Test Spare8 AVID1","Test Spare9 AVID1","Test Spare11 AVID1","Test Spare12 AVID1"'
+re.split(pattern,record)
+['"GLE Test AVID1"', '"GLE0003"', '"Dissolved"', '"Previous Name1 AVID1 | Previous Name2 AVID1 | Previous Name3 AVID1"', '"American Samoa"', '"American Samoa"', '"Trades as Name1 AVID1 | Trades as Name2 AVID1 | Trades as Name3 AVID1"', '"www.AVID1.com"', '"Test Spare0 AVID1"', '"Test Spare3 AVID1"', '"N"', '"Test Spare13 AVID1"', '"Test Spare1 AVID1"', '"Test Spare6 AVID1"', '"Test Spare7 AVID1"', '"Test Spare10 AVID1"', '"Test Spare14 AVID1"', '"Test GLE0003"', '"12"', '"N"', '', '', '"Test Spare15 AVID1"', '"Test Spare16 AVID1"', '"Test Spare17 AVID1"', '"Test Spare18 AVID1"', '"Test Spare19 AVID1"', '"Test Spare20 AVID1"', '"N"', '"Y"', '"OP PO Box AVID1"', '"OP Floor AVID1"', '"OP Building AVID1"', '"OP Street1 AVID1"', '"OP Street2 AVID1"', '"OP City AVID1"', '"OP Street3 AVID1"', '"OP State AVID1"', '"10101"', '"REG PO Box AVID1"', '"REG Floor AVID1"', '"REG Building AVID1"', '"REG Street1 AVID1"', '"REG Street2 AVID1"', '"REG Street3 AVID1"', '"REG City AVID1"', '"REG State AVID1"', '"10101"', '"OP Reg No AVID1"', '"Inc Reg No AVID1"', '"Regulatory ID AVID1"', '"Subsidiary"', '"CORP"', '"USA - United States Department of Labor"', '"2001-09-10"', '"2002-10-10"', '"Registered Agent Name AVID1 "', '"55-1254785"', '"New York Stock Exchange"', '"TickerCodeAVID1"', '"Pension funding"', '"J.66.02"', '"Pension funding"', '"525110"', '"0000009999"', '"Regulated"', '"6371"', '"Pension, Health, and Welfare Funds"', '"ABCDEF29907"', '"2"', '"GLE Test AVID1 - IP"', '"GLE Test AVID1 - UP"', '"549300R1C17QU3CUSK09"', '"Test Spare2 AVID1"', '"Test Spare4 AVID1"', '"Test Spare5 AVID1"', '"Test Spare8 AVID1"', '"Test Spare9 AVID1"', '"Test Spare11 AVID1"', '"Test Spare12 AVID1"']
+OR in load:
+pattern = r'{0}(?=(?:[^{1}]*{1}[^{1}]*{1})*[^{1}]*$)'.format(dataload.delimiter, dataload.enclosure)
+data_row = re.split(pattern, row.rstrip())
+
+# build a delimited file header
+# for col in extract.properties["HEADER"]:
+#     # hdr = "{0}{1}{0}{2}".format(extract.enclosure, col, extract.delimiter)
+# print hdr
+# print extract.properties["HEADER"]
+hdr = extract.delimiter.join(extract.properties["HEADER"])
+hdr = hdr.rstrip(extract.delimiter)
+print hdr
+output.write(hdr + '\n')
+
+
+#
+dtypeCount =[df.iloc[:,i].apply(type).value_counts() for i in range(df.shape[1])]
+print dtypeCount
+
+This returns
+dtypeCount
+
+[<class 'numpy.int32'>    4
+ Name: a, dtype: int64,
+ <class 'int'>    2
+ <class 'str'>    2
+ Name: b, dtype: int64,
+ <class 'numpy.int32'>    4
+ Name: c, dtype: int64]
+
+ 
+extract.filename.partition(str(extract.source_id))[2].lstrip(extract.properties["FILENAME_SEPARATOR"])
+
+# Connection Test
+from common import localEnv
+import cx_Oracle
+import base64
+conn = cx_Oracle.connect(localEnv.dbUser, base64.b64decode(localEnv.dbUserPwd), localEnv.tnsname)
+conn.version
+
+# Convert all data to unicode
+for col in range(0, len(df.columns)):
+	try:
+		df.iloc[:, col] = df.iloc[:, col].str.decode('utf-8')
+	except AttributeError as e:
+		pass
+# df['LEGAL NAME'] = df['LEGAL NAME'].str.decode('utf-8')
+# print df.dtypes
+
+
+# Test for errors in a file or string, returns True if Exception or Error are contained within line
+error_keywords = ["Exception", "Error"]
+def is_error(line):
+   return any(keyword in line for keyword in error_keywords)
+
+file = "'bash -c source /usr/local/avoxuser/scripts/avoxft.sh; avoxft  -g -s -d PROD/IN avox0126:@10.244.53.199 /usr/local/avoxuser/clientfiles/lupus/163_MDS_client_load_file_20181002.txt"
+server = "10.244.53.199"
+file[:file.index(server) + server.__len__()]
+"'bash -c source /usr/local/avoxuser/scripts/avoxft.sh; avoxft  -g -s -d PROD/IN avox0126:@10.244.53.199 "
+
+# Run unittest file from command line:
+c:\Python37\python.exe -m unittest utilities_unittest.py
